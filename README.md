@@ -5,6 +5,7 @@ An AI-powered cybersecurity agent
 * [Introduction](#introduction)
 * [Features](#features)
 * [Requirements](#requirements)
+* [System-Requirements](#System-Requirements)
 * [Installation](#installation)
 * [Usage](#usage)
 * [Options](#options)
@@ -29,7 +30,19 @@ PhiData
 OpenAI API Key
 Nmap (for port scanning plugin)
 
+# System Requirements
+Before installing Python dependencies, ensure the following are installed:
 
+Python 3.8+
+pip
+Rust & Cargo (required for some packages)
+
+To install Rust & Cargo on Debian-based systems (like Kali Linux):
+
+```bash
+sudo apt update
+sudo apt install cargo
+```
 
 # Installation
 Follow these steps to set up and run VenomAI locally:
