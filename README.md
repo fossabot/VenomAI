@@ -1,6 +1,5 @@
 # VenomAI
-An AI-powered cybersecurity assistant that merges the power of OpenAI with cybersecurity utilities for both offensive and defensive security tasks.
-
+An AI-powered cybersecurity agent
 
 ## Table of Contents
 * [Introduction](#introduction)
