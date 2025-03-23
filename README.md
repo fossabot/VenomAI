@@ -54,9 +54,9 @@ OPENAI_API_KEY=your_openai_api_key_here
 VT_API_KEY=your_virustotal_api_key_here
 Or run this from the project root (adjusting with your keys):
 
-Linux/macOS
+## Linux/macOS
 
-echo "OPENAI_API_KEY=your_openai_api_key_here" >> ai/.env && echo "VT_API_KEY=your_virustotal_api_key_here" >> ai/.env
+echo "OPENAI_API_KEY=your_openai_api_key_here" >> .env && echo "VIRUSTOTAL_API_KEY=your_virustotal_api_key_here" >> .env
 
 Windows CMD
 
