@@ -58,7 +58,7 @@ Or run this from the project root (adjusting with your keys):
 
 echo "OPENAI_API_KEY=your_openai_api_key_here" >> .env && echo "VIRUSTOTAL_API_KEY=your_virustotal_api_key_here" >> .env
 
-Windows CMD
+## Windows CMD
 
 echo OPENAI_API_KEY=your_openai_api_key_here>> ai\.env && echo VT_API_KEY=your_virustotal_api_key_here>> ai\.env
 
