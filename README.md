@@ -14,7 +14,7 @@ An AI-powered cybersecurity agent
 * [Disclaimer](#disclaimer)
 
 # Introduction
-VenomAI is an autonomous AI agent designed for cybersecurity analysis, threat evaluation, and intelligent automation. Built with Flask and PhiData, VenomAI allows users to interact naturally while performing offensive and defensive security tasks such as subdomain discovery, port scanning, SSL certificate checks, and more. This intelligent agent combines real-time plugin execution with large language model reasoning — making it an ideal AI companion for ethical hackers, defenders, and researchers alike.
+VenomAI is an autonomous AI agent designed for cybersecurity analysis, threat evaluation, and intelligent automation. Built with Flask and PhiData, VenomAI allows users to interact naturally while performing offensive and defensive security tasks such as subdomain discovery, port scanning, SSL certificate checks, and more. This intelligent agent combines real-time plugin execution with large language model reasoning — making it an ideal AI companion for ethical hackers, defenders, and researchers alike. YouTube video link https://youtu.be/ZM2gbXFGcTs
 
 # Features
 AI-powered chat interface using OpenAI (via PhiData integration)
@@ -80,8 +80,9 @@ source venv/bin/activate      # On Windows: venv\Scripts\activate
 
 5. Install Dependencies
 pip install -r requirements.txt
+pip install openai
 
-6. Run the Flask Server
+7. Run the Flask Server
 python3  venomai.py
 
 Visit http://localhost:3841 in your browser to start using VenomAI.
