@@ -70,7 +70,8 @@ source venv/bin/activate      # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 6. Run the Flask Server
-python ai/venomai.py
+python3  venomai.py
+
 Visit http://localhost:3841 in your browser to start using VenomAI.
 
 
