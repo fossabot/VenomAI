@@ -79,9 +79,6 @@ def run_nmap_scan(target):
     except Exception as e:
         return jsonify({"response": f"Error running Nmap: {str(e)}"})
 
-import whois
-
-import subprocess
 
 def get_whois_data(domain):
     try:
