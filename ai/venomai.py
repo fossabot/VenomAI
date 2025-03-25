@@ -7,17 +7,22 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 import time
+import whois
 
-# Load environment variables from ai/.env
+# Load environment variables
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 openai_api_key = os.getenv("OPENAI_API_KEY")
-vt_api_key = "b9ed4f9ef22d2ffa5546270d24087a2a5c2a42afd36ae832f2314c8a2dd4f3c0"
+virustotal_api_key = os.getenv("VIRUSTOTAL_API_KEY")
 
 if not openai_api_key:
     raise ValueError("OPENAI_API_KEY not set in .env file or environment")
+if not virustotal_api_key:
+    raise ValueError("VIRUSTOTAL_API_KEY not set in .env file or environment")
 
+# Initialize Flask app
 app = Flask(__name__, template_folder="../homepage", static_folder="../static")
 
+# AI Agent setup
 web_agent = Agent(
     name="VenomAI",
     model=OpenAIChat(id="gpt-4o"),
@@ -50,12 +55,14 @@ def process_plugin():
             return jsonify({"response": get_ip_info(user_input)})
         elif selected_plugin == "find_pages":
             return jsonify({"response": find_pages(user_input)})
+        elif selected_plugin == "ssl_checker":
+            return jsonify({"response": ssl_checker(user_input)})
         elif selected_plugin == "security_headers":
-            return jsonify({"response": security_headers_check(user_input)})
+            return jsonify({"response": check_security_headers(user_input)})
         elif selected_plugin == "virus_check":
-            return jsonify({"response": virus_total_domain_check(user_input)})
+            return jsonify({"response": virus_check(user_input)})
         elif selected_plugin == "subdomain_finder":
-            return jsonify({"response": find_subdomains_crtsh(user_input)})
+            return jsonify({"response": subdomain_finder(user_input)})
         else:
             response = web_agent.run(message=user_input)
             response_text = response if isinstance(response, str) else response.content
@@ -64,124 +71,171 @@ def process_plugin():
     except Exception as e:
         return jsonify({"response": f"Error: {str(e)}"})
 
+# Nmap Scan
 def run_nmap_scan(target):
     try:
         result = subprocess.run(["nmap", "-p-", target], capture_output=True, text=True)
-        if result.returncode == 0:
-            return jsonify({"response": f"```bash\n{result.stdout}\n```"})
-        else:
-            return jsonify({"response": "Error running Nmap scan."})
+        return jsonify({"response": f"```bash\n{result.stdout}\n```"})
     except Exception as e:
         return jsonify({"response": f"Error running Nmap: {str(e)}"})
 
-def get_whois_data(domain):  
-    try:  
-        whois_url = f'https://www.whois.com/whois/{domain}'  
-        response = requests.get(whois_url)  
-        soup = BeautifulSoup(response.text, 'html.parser')  
+import whois
+
+import subprocess
+
+def get_whois_data(domain):
+    try:
+        # First, try to fetch WHOIS data using the domain
+        whois_url = f'https://www.whois.com/whois/{domain}'
+        response = requests.get(whois_url)
+        soup = BeautifulSoup(response.text, 'html.parser')
         whois_info = soup.find('pre')
-        return whois_info.text.strip() if whois_info else "WHOIS information is not publicly available."
-    except Exception as e:  
-        return f"Error fetching Whois data: {e}"  
+        if whois_info:
+            return whois_info.text.strip()
+        else:
+            # If the website doesn't have the WHOIS data, use the whois command-line tool
+            result = subprocess.run(["whois", domain], capture_output=True, text=True)
+            return result.stdout
+    except Exception as e:
+        return f"Error fetching Whois data: {e}"
 
-def find_pages(website):  
-    try:  
-        info = requests.get(f'https://api.hackertarget.com/pagelinks/?q={website}')  
-        info.raise_for_status()
-        return info.text
-    except requests.exceptions.RequestException as err:  
-        return f"Error fetching page links: {err}"  
 
+
+# DNS Lookup
+def dns_lookup(domain):
+    try:
+        url = f"https://api.hackertarget.com/dnslookup/?q={domain}"
+        response = requests.get(url)
+        return response.text
+    except Exception as e:
+        return f"Error performing DNS lookup: {e}"
+
+# IP Info
 def get_ip_info(ip_address):  
     try:  
         ipinfo_url = f'https://ipinfo.io/{ip_address}/json'  
         response = requests.get(ipinfo_url)  
         if response.status_code == 401:  
             return "Invalid API key or unauthorized request."  
-        return response.json()
+        ip_info = response.json()
+
+        # Format the key info
+        formatted_info = "\n".join(f"**{key.capitalize()}**: {value}" for key, value in ip_info.items())
+        return formatted_info
+
     except Exception as e:  
         return f"Error fetching IP info: {e}"  
 
-def dns_lookup(website):  
-    try:  
-        info = requests.get(f'https://api.hackertarget.com/dnslookup/?q={website}')  
-        info.raise_for_status()
-        return info.text  
-    except requests.exceptions.RequestException as err:  
-        return f"Error performing DNS lookup: {err}"  
 
-def security_headers_check(domain):
+# Page Links
+def find_pages(domain):
     try:
-        url = f"https://securityheaders.com/?q={domain}&followRedirects=on"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get(url, headers=headers)
-        soup = BeautifulSoup(resp.text, "html.parser")
+        response = requests.get(f"https://api.hackertarget.com/pagelinks/?q={domain}")
+        return response.text
+    except Exception as e:
+        return f"Error fetching page links: {e}"
 
-        summary = soup.find("div", class_="summary").text.strip() if soup.find("div", class_="summary") else "Unknown"
-        missing = soup.find_all("tr", class_="grade-F")
-        missing_headers = [m.find_all("td")[0].text.strip() for m in missing] if missing else []
+# SSL Checker
+def ssl_checker(domain):
+    try:
+        api_url = "https://api.ssllabs.com/api/v3/analyze"
+        response = requests.get(api_url, params={"host": domain, "all": "done"})
+        analysis = response.json()
 
-        raw_table = soup.find("table", class_="table table-striped table-bordered")
-        raw_data = []
-        if raw_table:
-            for row in raw_table.find_all("tr")[1:]:
-                cols = row.find_all("td")
-                if len(cols) >= 2:
-                    raw_data.append(f"{cols[0].text.strip()}: {cols[1].text.strip()}")
+        while analysis.get("status") == "IN_PROGRESS":
+            time.sleep(5)
+            analysis = requests.get(api_url, params={"host": domain}).json()
 
-        missing_summary = "\n".join(missing_headers)
-        raw_headers = "\n".join(raw_data)
+        if "endpoints" not in analysis:
+            return "SSL analysis failed."
+
+        endpoint = analysis["endpoints"][0]
+        ip = endpoint.get("ipAddress", "N/A")
+        grade = endpoint.get("grade", "Unknown")
+
+        certs = analysis.get("certs", [])
+        chain_info = ""
+        for i, cert in enumerate(certs, 1):
+            chain_info += (
+                f"🔗 Certificate #{i}:\n"
+                f"- Subject: {cert.get('subject')}\n"
+                f"- Valid from: {cert.get('notBefore')}\n"
+                f"- Valid until: {cert.get('notAfter')}\n"
+                f"- Issuer: {cert.get('issuer')}\n"
+                f"- Signature: {cert.get('sigAlg')}\n"
+                f"- SHA256 Fingerprint: {cert.get('sha256')}\n\n"
+            )
 
         return (
-            f"🛡️ Security Headers Summary: {summary}\n\n"
-            f"📛 Missing Headers:\n{missing_summary if missing_summary else 'None'}\n\n"
-            f"📦 Raw Headers:\nhttp\n{raw_headers}"
+            f"🔐 **IP Address**: {ip}\n"
+            f"🏷️ **SSL Labs Grade**: {grade}\n\n"
+            f"🧾 **Certificate Chain**:\n{chain_info if chain_info else 'N/A'}"
+        )
+    except Exception as e:
+        return f"Error fetching SSL data: {e}"
+
+# Security Headers
+def check_security_headers(domain):
+    try:
+        url = f"https://securityheaders.com/?q={domain}&followRedirects=on"
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        summary = soup.select_one("div.summary")
+        grade = summary.get_text(strip=True) if summary else "Ouch, you should work on your security posture immediately"
+
+        headers_section = soup.select_one("div#headers")
+        raw_headers = headers_section.get_text(strip=True) if headers_section else "Unavailable"
+
+        missing_tags = soup.select("div#missingHeaders ul li code")
+        missing_summary = "\n".join(tag.get_text(strip=True) for tag in missing_tags) if missing_tags else "None"
+
+        return (
+            f"🛡️ **Security Headers Summary**: {grade}\n\n"
+            f"📛 **Missing Headers**:\n{missing_summary}\n\n"
+            f"📦 **Raw Headers**:\n```http\n{raw_headers}\n```"
         )
     except Exception as e:
         return f"Error fetching security headers: {e}"
 
-def virus_total_domain_check(domain):
+# Virus Checker
+def virus_check(domain):
     try:
+        headers = {"x-apikey": virustotal_api_key}
         url = f"https://www.virustotal.com/api/v3/domains/{domain}"
-        headers = {"x-apikey": vt_api_key}
         response = requests.get(url, headers=headers)
-        data = response.json()
+        if response.status_code != 200:
+            return "Failed to retrieve virus data from VirusTotal."
 
-        stats = data["data"]["attributes"]["last_analysis_stats"]
-        categories = data["data"]["attributes"].get("categories", {})
-        reputation = data["data"]["attributes"].get("reputation", "N/A")
-        ranks = data["data"]["attributes"].get("popularity_ranks", {})
+        data = response.json()["data"]
+        stats = data["attributes"]["last_analysis_stats"]
+        categories = data["attributes"].get("categories", {})
+        votes = data["attributes"].get("total_votes", {})
 
-        categories_text = "\n".join(f"- {k}: {v}" for k, v in categories.items())
-        ranks_text = "\n".join(f"- {k}: {v.get('rank', 'N/A')}" for k, v in ranks.items())
-
-        return (
-            f"🔍 **VirusTotal Domain Check for {domain}**\n\n"
-            f"🛡️ **Reputation Score**: {reputation}\n\n"
-            f"📊 **Detection Stats**:\n"
-            f"- Harmless: {stats.get('harmless', 0)}\n"
-            f"- Malicious: {stats.get('malicious', 0)}\n"
-            f"- Suspicious: {stats.get('suspicious', 0)}\n"
-            f"- Undetected: {stats.get('undetected', 0)}\n"
-            f"- Timeout: {stats.get('timeout', 0)}\n\n"
-            f"🏷️ **Categories**:\n{categories_text}\n\n"
-            f"📈 **Popularity Ranks**:\n{ranks_text}"
+        summary = (
+            f"🦠 **VirusTotal Report for {domain}**\n"
+            f"🔎 Malicious: {stats['malicious']}\n"
+            f"⚠️ Suspicious: {stats['suspicious']}\n"
+            f"✅ Harmless: {stats['harmless']}\n"
+            f"🧩 Undetected: {stats['undetected']}\n"
+            f"🏷️ Categories: {', '.join(categories.values()) if categories else 'N/A'}\n"
+            f"🗳️ Community Votes - Harmless: {votes.get('harmless', 0)}, Malicious: {votes.get('malicious', 0)}"
         )
+        return summary
     except Exception as e:
-        return f"Error checking VirusTotal domain: {e}"
+        return f"Error checking virus status: {e}"
 
-def find_subdomains_crtsh(domain):
+# Subdomain Finder using crt.sh
+def subdomain_finder(domain):
     try:
         url = f"https://crt.sh/?q={domain}&output=json"
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            return "Failed to fetch subdomains."
-        results = response.json()
-        subdomains = {entry['name_value'] for entry in results}
-        formatted = "\n".join(sorted(subdomains))
-        return f"🔍 Subdomains for {domain}:\n\n{formatted}"
+        response = requests.get(url)
+        data = response.json()
+        subdomains = set(entry['name_value'] for entry in data)
+        return "🔍 **Subdomains Found:**\n" + "\n".join(sorted(subdomains))
     except Exception as e:
         return f"Error fetching subdomains: {e}"
 
+# Run Flask app
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=3841, debug=True)
