@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VenomAI</title>
+<style>
+/* General Styling */
+* {
+margin: 0;
+padding: 0;
+box-sizing: border-box;
+font-family: Arial, sans-serif;
+}
+
+
+body {
+height: 100vh;
+background-color: #343541;
+color: white;
+transition: background 0.3s, color 0.3s;
+}
+
+
+/* Dark Mode */
+.dark-mode {
+background-color: black;
+}
+
+
+/* Light Mode */
+.light-mode {
+background-color: white;
+color: black;
+}
+
+
+/* Sidebar */
+.sidebar {
+width: 0;
+background-color: #202123;
+padding: 10px;
+display: flex;
+flex-direction: column;
+gap: 10px;
+transition: width 0.3s ease-in-out;
+overflow-x: hidden;
+position: fixed;
+left: 0;
+top: 0;
+height: 100%;
+z-index: 1000;
+white-space: nowrap;
+visibility: hidden;
+z-index: 1002;
+transition: transform 0.3s ease;
+}
+
+
+.sidebar.open {
+width: 250px;
+visibility: visible;
+}
+
+.sidebar-content {
+    display: none;
+    flex: 1;
+    padding-bottom: 100px; /* Add padding at bottom to prevent content overlap */
+}
+
+
+.sidebar.open .sidebar-content {
+display: flex;
+flex-direction: column;
+gap: 10px;
+}
+
+
+.chat-history div {
+background: #40414F;
+padding: 10px;
+margin: 5px 0;
+border-radius: 5px;
+cursor: pointer;
+color: white;
+}
+
+
+.chat-history div:hover {
+background: #50515f;
+}
+
+
+/* Sidebar Buttons */
+.toggle-sidebar {
+position: fixed;
+left: 10px;
+top: 10px;
+font-size: 20px;
+background: #d32f2f;
+color: white;
+border: none;
+padding: 10px;
+border-radius: 5px;
+cursor: pointer;
+z-index: 2000;
+}
+
+
+.toggle-sidebar:hover {
+background: #b71c1c;
+}
+
+
+/* Chat Area */
+.chat-area {
+flex: 1;
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+padding-bottom: 60px;
+margin-left: 0;
+transition: margin-left 0.3s ease-in-out;
+width: 100%;
+}
+
+
+.sidebar.open + .chat-area {
+margin-left: 250px;
+}
+
+
+.message {
+max-width: 75%;
+padding: 12px 16px;
+border-radius: 10px;
+margin-bottom: 40px;
+word-wrap: break-word;
+line-height: 1.4;
+background-color: #d32f2f;
+color: white;
+}
+
+
+.user-message {
+align-self: flex-end;
+border-radius: 10px 10px 0 10px;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background-color: #444;
+    color: #f2f2f2;
+    border: none;
+    padding: 5px 10px;
+    font-size: 0.85em;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.copy-btn:hover {
+    background-color: #555;
+}
+
+
+/* Bot message styling */
+.bot-message {
+    background-color: #2e3436; /* Dark background */
+    color: #f2f2f2; /* Light color for text */
+    font-family: 'Arial', sans-serif; /* Standard font for text */
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 40px;
+    word-wrap: break-word;
+    line-height: 1.4;
+    text-align: justify; /* Justified text */
+    white-space: pre-wrap; /* Preserve white spaces and line breaks */
+    border: 1px solid #444; /* Optional border for separation */
+    overflow-x: auto; /* Allow horizontal scroll if necessary */
+    max-width: 100%; /* Adjust to container width */
+}
+
+.bot-message img {
+    display: none; /* Hide image for non-terminal appearance */
+}
+
+.bot-message pre {
+    margin: 0;
+    white-space: pre-wrap; /* Ensure long text wraps */
+    word-wrap: break-word; /* Ensure words break at the end of the line */
+    font-size: 0.9em; /* Optional: Smaller font size for clarity */
+}
+
+/* Remove the terminal-specific styling */
+.bot-terminal-message {
+    background-color: #2e3436; /* Dark background */
+    color: #f2f2f2; /* Light text */
+    font-family: 'Courier New', monospace; /* Monospaced font */
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 40px;
+    word-wrap: break-word;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    border: 1px solid #444;
+    text-align: justify; /* Justified text */
+}
+
+input {
+flex: 1;
+padding: 12px;
+border: none;
+border-radius: 5px;
+outline: none;
+background-color: #343541;
+color: white;
+font-size: 16px;
+}
+
+
+button {
+margin-left: 10px;
+padding: 12px 20px;
+background-color: #d32f2f;
+border: none;
+border-radius: 5px;
+cursor: pointer;
+color: white;
+font-size: 16px;
+transition: background 0.3s;
+}
+
+
+button:hover {
+background-color: #b71c1c;
+}
+
+
+/* Fixed Dark Mode Button */
+.mode-toggle {
+    position: absolute;
+    bottom: 10px; /* Increased from 10px to avoid overlap with input container */
+    left: 2px;
+    width: 230px;
+    text-align: center;
+    background-color: inherit;
+    z-index: 1001; /* Ensure it's above other elements */
+}
+
+
+/* Main Container */
+.main-container {
+width: 100%;
+max-width: none;
+margin: 0 auto;
+text-align: center;
+padding: 20px;
+border-radius: 10px;
+background: rgba(255, 255, 255, 0.1);
+transition: opacity 0.5s ease-in-out;
+box-sizing: border-box;
+flex-direction: column;
+display: flex;
+
+}
+
+
+.main-title {
+font-size: 36px;
+margin-bottom: 20px;
+}
+
+
+/* Sections */
+.info-sections {
+display: flex;
+flex-wrap: wrap;
+justify-content: center;
+gap: 20px;
+margin: 20px auto;
+max-width: 1200px;
+}
+
+
+.info-box {
+flex: 1;
+padding: 15px;
+border-radius: 10px;
+background: rgba(0, 0, 0, 0.3);
+box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+max-width: 350px;
+}
+
+
+.info-box h3 {
+font-size: 20px;
+margin-bottom: 10px;
+}
+
+
+.info-box p {
+font-size: 14px;
+line-height: 1.5;
+}
+
+.input-group {
+    display: flex;
+    max-width: 1200px;
+    width: 100%;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.hidden{
+opacity: 0;
+pointer-events: none;
+}
+/* Adjust input area layout for better responsiveness */
+.input-container {
+    padding: 20px;
+    background-color: #40414F;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+.sidebar.open + .chat-area .input-container {
+    width: calc(100% - 250px);
+    left: 250px;
+}
+
+.input-container #pluginSelect {
+ width: 200px;
+}
+#pluginSelect {
+    width: 200px;
+    padding: 12px 15px;
+    background-color: #202123;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='white' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: calc(100% - 12px) center;
+    padding-right: 35px;
+}
+input {
+flex: 3;
+padding: 12px;
+border: none;
+border-radius: 5px;
+outline: none;
+background-color: #343541;
+color: white;
+font-size: 16px;
+max-width: 500px; /* Ensure it's not too wide */
+}
+
+button {
+margin-left: 10px;
+padding: 12px 20px;
+background-color: #d32f2f;
+border: none;
+border-radius: 5px;
+cursor: pointer;
+color: white;
+font-size: 16px;
+transition: background 0.3s;
+}
+
+/* Make sure the chat area scrolls to the top and new messages appear at the bottom */
+.chat-history {
+    flex-grow: 1;
+    height: calc(100vh - 260px); /* Adjusted to stop above mode toggle */
+    overflow-y: auto;
+    margin-bottom: 20px; /* Add space between history and mode toggle */
+}
+
+/* Keep the message container at the top, removing the middle alignment */
+.chat-container {
+flex: 1;
+overflow-y: auto;
+padding: 20px;
+display: flex;
+flex-direction: column;
+justify-content: flex-start; /* Ensure the messages are aligned to the top */
+width: 100%;
+max-width: 1200px;
+margin: 0 auto;
+}
+
+
+#pluginSelect option {
+background-color: #343541;
+}
+
+#pluginSelect:hover {
+    background-color: #2d2d30;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+#pluginSelect:focus {
+    outline: none;
+    border-color: #d32f2f;
+    box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.2);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+.sidebar.open {
+width: 200px;
+}
+.sidebar.open + .chat-area .input-container {
+        width: calc(100% - 200px);
+        left: 200px;
+}
+.input-group {
+        padding: 0 10px;
+}
+#pluginSelect {
+        width: 150px;
+    }
+
+.input-container button {
+        padding: 12px 20px;
+        min-width: 80px;
+}
+
+
+.sidebar.open + .chat-area {
+margin-left: 200px;
+}
+
+.version-dropdown {
+width: 180px;
+}
+
+.main-container {
+padding: 15px;
+}
+.input-container input {
+    flex: 1;
+    max-width: 600px;
+    padding: 12px 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background-color: #343541;
+    color: white;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+.input-container input:focus {
+    outline: none;
+    border-color: #d32f2f;
+    box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.2);
+    background-color: #3a3b47;
+}
+
+.input-container input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.input-container #pluginSelect { 
+width: auto;
+}
+.input-container button {
+    padding: 12px 30px;
+    background-color: #d32f2f;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    font-weight: 500;
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+.input-container button:hover {
+    background-color: #b71c1c;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.input-container button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.info-sections {
+flex-direction: column;
+}
+
+
+.info-box {
+flex: 1 1 100%;
+min-width: 100%; 
+max-width: 100%;
+}
+
+</style>
+</head>
+<body>
+<!-- Main Content -->
+<div class="main-container">
+<div class="main-title">VenomAI</div>
+
+
+<!-- Sections: Examples, Capabilities, and Limitations -->
+<div class="info-sections" id="infoSections">
+<div class="info-box">
+    <h3>Examples</h3>
+    <p>"What are the most common web application vulnerabilities?" →</p>
+    <p>"How can I protect my network from unauthorized access?" →</p>
+    <p>"What are the latest cybersecurity threats in 2024?" →</p>
+    </div>
+    
+    <div class="info-box">
+    <h3>Capabilities</h3>
+    <p>Remembers what the user said earlier in the conversation</p>
+    <p>Allows the user to provide follow-up corrections</p>
+    <p>Trained to decline inappropriate requests</p>
+    </div>
+    
+    <div class="info-box">
+    <h3>Limitations</h3>
+    <p>May occasionally generate inaccurate information about cybersecurity incidents</p>
+    <p>May sometimes provide responses that require further validation or verification</p>
+    <p>Has limited knowledge, but your input helps improve my responses over time</p>
+    </div>
+    </div>
+    
+
+<!-- Toggle Sidebar Button -->
+<button class="toggle-sidebar" onclick="toggleSidebar()">☰</button>
+
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+<div class="sidebar-content">
+<button onclick="newChat()">+ New Chat</button>
+<div class="chat-history" id="chatHistory"></div>
+</div>
+<button class="mode-toggle" onclick="toggleMode()">🌙</button>
+</div>
+
+<!-- Chat Area -->
+<div class="chat-container" id="chatContainer"></div>
+<div class="input-container">
+<div class="input-group">
+    <select id="pluginSelect">
+        <option value="">No Plugin Selected</option>
+        <option value="Whois Lookup">Whois Lookup</option>
+        <option value="DNS lookup">DNS lookup</option>
+        <option value="IP address to lookup">IP address to lookup</option>
+        <option value="subdomain_finder">Subdomain Finder</option>
+        <option value="port_scanner">Port Scanner</option>
+        <option value="find_pages">Find Pages</option>
+        <option value="ssl_checker">SSL Checker</option>
+        <option value="security_headers">Security Headers</option>
+        <option value="virus_check">VirusTotal Virus Check</option>
+    </select>
+<input type="text" id="userInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+<button onclick="sendMessage()">Send</button>
+</div>
+</div>
+</div> <!-- End of main-container -->
+<script>
+document.addEventListener('click', function(event) {
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarButton = document.querySelector('.sidebar-button');
+    
+    // Close sidebar if click is outside sidebar and not on the toggle button
+    if (!sidebar.contains(event.target) && !sidebarButton.contains(event.target)) {
+        sidebar.classList.remove('open');
+    }
+});
+// Initialize variables for chats and version
+let chats = JSON.parse(localStorage.getItem("chats")) || [[]];
+let currentChatIndex = 0;
+let chatGPTVersion = localStorage.getItem("chatGPTVersion") || "GPT-4";
+
+// Toggle Sidebar visibility
+function toggleSidebar() {
+    let sidebar = document.getElementById("sidebar");
+    sidebar.classList.toggle("open");
+    let isOpen = sidebar.classList.contains("open");
+    sidebar.style.visibility = isOpen ? 'visible' : 'hidden';
+}
+
+function copyToClipboard(button) { 
+    const botMessage = button. closest('.bot -message');
+    const textToCopy = botMessage.querySelector('pre').textContent;
+    
+    const textarea = document.createElement('textarea');
+    textarea.value = textToCopy;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    
+    // Optional: Change button text to show it's copied 
+    button.textContent = 'Copied!';
+    setTimeout( () => { 
+    button.textContent = 'Copy';
+    }, 2000);
+}
+
+// Close sidebar when clicking outside
+document.addEventListener('click', function(event) {
+    const sidebar = document.getElementById("sidebar");
+    const toggleButton = document.querySelector('.toggle-sidebar');
+    
+    // If clicking the toggle button, do nothing (let toggleSidebar handle it)
+    if (toggleButton && toggleButton.contains(event.target)) {
+        return;
+    }
+    
+    // If sidebar is visible and click is outside sidebar, close it
+    if (sidebar.style.visibility === 'visible' && !sidebar.contains(event.target)) {
+        sidebar.classList.remove("open");
+        sidebar.style.visibility = 'hidden';
+    }
+});
+
+// Toggle Dark/Light Mode
+function toggleMode() {
+document.body.classList.toggle("light-mode");
+let modeButton = document.querySelector(".mode-toggle");
+modeButton.textContent = document.body.classList.contains("light-mode") ? "☀️" : "🌙";
+localStorage.setItem("theme", document.body.classList.contains("light-mode") ? "light" : "dark");
+}
+
+// New chat functionality
+function newChat() {
+chats.push([]);
+currentChatIndex = chats.length - 1;
+updateChatHistory();
+renderChat();
+localStorage.setItem("chats", JSON.stringify(chats));
+
+// Show the info-sections when a new chat is created
+document.getElementById("infoSections").classList.remove("hidden");
+document.getElementById("chatContainer").innerHTML = ''; // Clear chat area
+}
+
+// Append message function for the chat container
+function appendMessage(text, className, isBot = false) {
+    let chatContainer = document.getElementById("chatContainer");
+    let messageDiv = document.createElement("div");
+    messageDiv.className = "message " + className;
+
+    if (isBot) {
+        // If no plugin is selected, just display the message without terminal styling
+        if (!document.getElementById("pluginSelect").value) {
+            messageDiv.classList.remove("bot-terminal-message");
+            messageDiv.classList.add("bot-message");
+        } else {
+            // If a plugin is selected, apply terminal styling
+            messageDiv.classList.remove("bot-message");
+            messageDiv.classList.add("bot-terminal-message");
+        }
+        
+        // Display the AI response
+        messageDiv.innerHTML = ` ${text}`;
+    } else {
+        messageDiv.textContent = text;
+    }
+
+    // Append the message to the chat container and scroll to the bottom
+    chatContainer.appendChild(messageDiv);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Send message function
+function sendMessage() {
+let userInput = document.getElementById("userInput").value.trim();
+let selectedPlugin = document.getElementById("pluginSelect").value;
+
+if (!userInput) return;
+
+// Hide the info-sections once a message is sent
+document.getElementById("infoSections").classList.add("hidden");
+
+// Append user input message to the chat area
+appendMessage(userInput, "user-message");
+
+// Store the user's message
+chats[currentChatIndex].push({ text: userInput, sender: "user" });
+localStorage.setItem("chats", JSON.stringify(chats));
+
+// Update the sidebar with the new chat preview
+updateChatHistory();
+
+// Clear the input field
+document.getElementById("userInput").value = "";
+
+// Send the user input along with the selected plugin to the backend
+fetch("/api/process_plugin", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ message: userInput, plugin: selectedPlugin })
+})
+.then(response => {
+if (!response.ok) {
+throw new Error(`HTTP error! Status: ${response.status}`);
+}
+return response.json();
+})
+.then(data => {
+// Display response from backend
+if (data.response) {
+// Show the response in the chat
+appendMessage(data.response, "bot-message", true);
+
+// Store the bot's response
+chats[currentChatIndex].push({ text: data.response, sender: "bot" });
+localStorage.setItem("chats", JSON.stringify(chats));
+
+// Update the sidebar with the new chat preview
+updateChatHistory();
+} else {
+// If no response from AI, display fallback message
+appendMessage("No response from AI", "bot-message", true);
+}
+})
+.catch(error => {
+console.error("Error:", error);
+// If there's an error, show an error message
+appendMessage("Error communicating with AI", "bot-message", true);
+});
+}
+
+// Update chat history on the sidebar
+function updateChatHistory() {
+let historyDiv = document.getElementById("chatHistory");
+historyDiv.innerHTML = chats.map((chat, index) => {
+// Show the first message of each chat as a preview in the sidebar
+return `
+<div onclick="loadChat(${index})">
+${chat.length > 0 ? chat[0].text.slice(0, 20) + "..." : "New Chat"}
+</div>`;
+}).join("");
+}
+
+// Render chat messages in the chat area (main content area)
+function renderChat() {
+let chatContainer = document.getElementById("chatContainer");
+// Clear the chat container
+chatContainer.innerHTML = '';
+
+// Map through the current chat and render both user and bot messages
+chats[currentChatIndex].forEach(msg => {
+const messageDiv = document.createElement("div");
+messageDiv.className = "message " + (msg.sender === "user" ? "user-message" : "bot-message");
+messageDiv.textContent = msg.text;
+
+// Append message to chat container
+chatContainer.appendChild(messageDiv);
+});
+
+// Ensure the chat container scrolls to the bottom after rendering
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+// Load selected chat history
+function loadChat(index) {
+currentChatIndex = index;
+renderChat();
+}
+</script>
+</body>
+</html>
