@@ -31,6 +31,7 @@ web_agent = Agent(
     markdown=True,
 )
 
+
 @app.route("/")
 def home():
     return render_template("index.html")
